@@ -1,0 +1,117 @@
+from utils import preprocess
+import numpy as np
+from IPython.display import clear_output
+out=0
+
+#____________Calibration____________
+STEERING_BIAS = -0.22  #-0.22 center
+THROTTLE_BIAS =  0.14  #0.14  neutral
+#___________________________________
+
+
+#****************CONTROLS*****************
+STEERING_GAIN = -1.0   # -1 for traxxas
+THROTTLE_GAIN =  0.2   # 0.65 tent track
+MAX           =  0.3   # Max constant speed value. 0.22 max tent track
+#****************OPTIONS******************
+LIMITER       =  False # default MIN = 0.16
+CONSTANT      =  False # car.throttle = MAX
+PRINT         =  True  # outputs steering & throttle values
+#*****************************************
+
+
+try:
+    while True:
+    
+        #______________Image processing_____________
+        image = camera.read()
+        image = preprocess(image).half()
+        output = model_trt(image).detach().cpu().numpy().flatten()
+        x = float(output[0])
+        y = float(output[1])
+        #___________________________________________
+
+    
+    
+        #______________Steering control_____________
+        STEERING = round(x * STEERING_GAIN + STEERING_BIAS, 2)  
+        if STEERING < -1.0: #Servo motor protection
+            car.steering = -1.0
+        elif STEERING > 1.0:
+            car.steering = 1.0
+        else: car.steering = STEERING
+        #___________________________________________
+
+    
+    
+        #______________Throttle control_____________
+        THROTTLE = round(y * THROTTLE_GAIN + THROTTLE_BIAS, 2)
+        if LIMITER: #Limiter
+            if THROTTLE < 0.16: #minimum speed
+                car.throttle = 0.16
+            elif THROTTLE > MAX: #maximum speed
+                car.throttle = MAX
+            else: car.throttle = THROTTLE
+        elif CONSTANT:
+            car.throttle = MAX
+        else: car.throttle = THROTTLE
+        #___________________________________________
+
+        
+        
+        #________________Print value________________
+        if PRINT: #output value
+            print("S = "+str(car.steering)+" T = "+str(car.throttle))
+            if out == 10:
+                clear_output()
+                out = 0
+            out+=1
+        #___________________________________________
+        
+                #_____________________Image collect____________________
+        #Send controls to gym wrapper and returns image, coordinates, etc.
+        if COLLECT:
+            now = str(datetime.datetime.now())
+            now = now.replace(" ", "")
+            now = now.replace(".", "")
+            now = now.replace(":", "-")
+            newName = str(int(224 * (STEERING / 2.0 + 0.5))) + "_" + str(int(224 * (THROTTLE / -2.0 + 0.65))) + "_" + str(now) + ".jpg"
+            cv2.imwrite("./road_following__A/auto_images/"+newName, imageSeen)
+            counter = counter + 1
+            print(str(counter-1) + " image(s) captured")
+        #_____________________________________________________
+        
+except KeyboardInterrupt:
+#______________Reset car_____________
+    car.steering = -0.22
+    car.throttle = 0.14
+    print ("!!!!!!!!STOP!!!!!!!!")
+#____________________________________
+
+
+
+#Throttle equation
+#CSI camera:20 degrees, 12.5cm height  
+#y_min_horizon = 40 → 0.94
+#y_min_ave = 60 → 0.76
+#y_max_ave = 170 → -0.22
+
+#y = -2.0 * (ann['y'] / height - 0.65) # -0.70 bottom, +1.30 top
+
+#scatch work
+#y = -2.0 * (ann['y'] / height - 0.5) # -1 bottom, +1 top
+#1= -2 *(40/224-b)
+#1 = -80/224+2b
+#2b = 1+80/224
+#b=1/2+40/224
+#b=0.67
+#b=0.65 round down
+
+y = -2.0 * (ann['y'] / height - 0.65)
+
+y/-2=coord/224-0.65
+-y/2+0.65=coord/224
+-224y/2+0.65=coord
+y = -224y/2+0.65
+
+y = int(camera.height * (y / -2.0 + 0.65))

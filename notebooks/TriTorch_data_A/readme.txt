@@ -1,0 +1,1 @@
+ All zip and image folders should be stored here. 
