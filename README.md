@@ -1,5 +1,5 @@
 # TriTorch - Jetracer build
-**Summary:** TriTorch is a modified version of [Jetracer robot](https://github.com/NVIDIA-AI-IOT/jetracer). 
+**Summary:** TriTorch is a modified version of the [Jetracer robot](https://github.com/NVIDIA-AI-IOT/jetracer). Go to the `develop` branch to try out new features. 
 
 ![f](TriTorch_logo.png)
 
